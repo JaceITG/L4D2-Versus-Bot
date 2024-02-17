@@ -2,8 +2,12 @@ import discord
 from discord.ext import commands
 import random
 import asyncio
+import os
 
 # Define the intents
+
+BOT_TOKEN = os.getenv('BOT_TOKEN')
+
 intents = discord.Intents.all()
 intents.members = True
 intents.reactions = True
@@ -314,4 +318,4 @@ async def queue_process(ctx, queue_type):
     await voting(ctx)
 
 # Run the bot
-bot.run('MTE5ODQ1NDEzMjU1NDYwNDY3NA.GmWW2N.TLllhu77J2sQRsbhBJZ1MW_imPf4i-MzMZDaB0')
+bot.run(BOT_TOKEN)
