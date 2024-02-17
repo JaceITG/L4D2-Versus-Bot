@@ -317,5 +317,4 @@ async def queue_process(ctx, queue_type):
 
     await voting(ctx)
 
-# Run the bot
 bot.run(BOT_TOKEN)
