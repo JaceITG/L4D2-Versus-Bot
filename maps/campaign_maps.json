@@ -1,0 +1,74 @@
+{
+    "maps": [
+        {
+            "name": "No Mercy",
+            "timeout": 0,
+            "amountPlayed": 0
+        },
+        {
+            "name": "Crash Course",
+            "timeout": 3,
+            "amountPlayed": 1
+        },
+        {
+            "name": "Death Toll",
+            "timeout": 2,
+            "amountPlayed": 1
+        },
+        {
+            "name": "Dead Air",
+            "timeout": 0,
+            "amountPlayed": 0
+        },
+        {
+            "name": "Blood Harvest",
+            "timeout": 1,
+            "amountPlayed": 1
+        },
+        {
+            "name": "The Sacrifice",
+            "timeout": 0,
+            "amountPlayed": 0
+        },
+        {
+            "name": "The Last Stand",
+            "timeout": 0,
+            "amountPlayed": 0
+        },
+        {
+            "name": "Dead Center",
+            "timeout": 0,
+            "amountPlayed": 0
+        },
+        {
+            "name": "The Passing",
+            "timeout": 0,
+            "amountPlayed": 0
+        },
+        {
+            "name": "Dark Carnival",
+            "timeout": 0,
+            "amountPlayed": 1
+        },
+        {
+            "name": "Swamp Fever",
+            "timeout": 0,
+            "amountPlayed": 0
+        },
+        {
+            "name": "Hard Rain",
+            "timeout": 0,
+            "amountPlayed": 0
+        },
+        {
+            "name": "The Parish",
+            "timeout": 0,
+            "amountPlayed": 0
+        },
+        {
+            "name": "Cold Stream",
+            "timeout": 0,
+            "amountPlayed": 0
+        }
+    ]
+}
