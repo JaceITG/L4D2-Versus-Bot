@@ -1,2 +1,4 @@
-discord.py
-requests
+discord.py==1.7.3
+asyncio==3.4.3
+datetime==3.3
+json==2.0.9

@@ -3,18 +3,22 @@ from discord.ext import commands
 import random
 import asyncio
 import os
-import datetime
+from datetime import datetime
 import json
 
-BOT_TOKEN = os.getenv('BOT_TOKEN')
-
+from dotenv import load_dotenv
 intents = discord.Intents.all()
 intents.members = True
 intents.reactions = True
 
+load_dotenv()
+
+# Retrieve the bot token from the environment
+BOT_TOKEN = os.getenv('BOT_TOKEN')
 zeuskriegID = "1148387726719189103"
 
 queue_in_progress = False
+canSub = False
 
 emoji_ids = {
     '1_Vanilla': 1211013206915416146,
@@ -76,7 +80,7 @@ async def on_ready():
 
 @bot.command()
 async def queue(ctx, queue_type):
-    global queue_in_progress
+    global queue_in_progress, reacted_users, participants_names
     allowed_role = discord.utils.get(ctx.guild.roles, name='Matchmaker')
     if allowed_role in ctx.author.roles:
         # Proceed with the queue process if the user has the allowed role
@@ -94,8 +98,7 @@ async def queue(ctx, queue_type):
 
 @bot.command()
 async def voting(ctx, queue_type):
-    global participants_names, reacted_users
-    global queue_in_progress
+    global participants_names, reacted_users, queue_in_progress, team1_names, team2_names, canSub, most_voted_map
 
     with open('maps/campaign_maps.json', 'r') as file:
         available_vanilla_maps = json.load(file)
@@ -187,14 +190,65 @@ async def voting(ctx, queue_type):
     # Send the message with the most voted map and assigned teams
     await ctx.send(
         f"**{most_voted_map['name']}** has won and teams have been assigned! "
-        f"Please join Pre-Game VC within 10 minutes or you may be subbed out.\n\n"
+        f"Please join Pre-Game VC within 5 minutes or you may be subbed out.\n\n"
+        f"`Survivors`\n{team1_mentions}\n\n"
+        f"`Infected`\n{team2_mentions}\n\n"
+        f"`=========`\n\n"
+        f"**__This queue is live. Use the !finalize command to end this queue.__**\n\n"
+        f"Use !sub to substitute players who don't show up. Substitute any applicable players before finalizing a queue.\n\n"
+        f"*Please remember to send a Post-Game Summary before starting a new queue!*"
+    )
+
+    canSub = True
+
+@bot.command()
+async def sub(ctx, player_to_remove: discord.Member, player_to_add: discord.Member):
+    global team1_names, team2_names, canSub, participants_names
+
+    if not canSub:
+        await ctx.send("Teams have not been made yet.")
+        return
+
+    # Check if the player to add is already in the queue
+    if player_to_add.name in participants_names:
+        await ctx.send(f"{player_to_add.name} is already in the queue.")
+        return
+
+    # Check if the player to remove is in the queue
+    if player_to_remove.name not in participants_names:
+        await ctx.send(f"{player_to_remove.name} is not in the queue.")
+        return
+
+    # Remove the player to remove and add the player to add
+    if player_to_remove.name in team1_names:
+        team1_names.remove(player_to_remove.name)
+        team1_names.append(player_to_add.name)
+    elif player_to_remove.name in team2_names:
+        team2_names.remove(player_to_remove.name)
+        team2_names.append(player_to_add.name)
+
+    # Update participants_names
+    participants_names.remove(player_to_remove.name)
+    participants_names.append(player_to_add.name)
+
+    # Construct team mentions
+    team1_mentions = '\n'.join([f'<@{ctx.guild.get_member_named(name).id}>' for name in team1_names])
+    team2_mentions = '\n'.join([f'<@{ctx.guild.get_member_named(name).id}>' for name in team2_names])
+
+    # Send the updated teams message
+    await ctx.send(
+        f"**Updated Teams**:\n\n"
         f"`Survivors`\n{team1_mentions}\n\n"
         f"`Infected`\n{team2_mentions}\n\n"
     )
 
 
+@bot.command()
+async def end(ctx, queue_type: str):
+    global queue_in_progress, reacted_users, participants_names
+    now = datetime.now()
 
-    # Notify specific users about the queue information
+    current_time = now.strftime("%H:%M:%S")
     specific_user_ids = ["1148387726719189103", "318486548394016789", "317412117240348675"]
     for user_id in specific_user_ids:
         user = await bot.fetch_user(user_id)
@@ -202,21 +256,19 @@ async def voting(ctx, queue_type):
             try:
                 await user.send(
                 f"**__Queue Information__**\n\n"
-                f"**Date Popped**: {datetime.datetime.utcnow()}\n"
+                f"**Date Popped**: {current_time}\n"
                 f"**Queue Type**: {queue_type.capitalize()}\n"
-                f"**Campaign**: {most_voted_map}\n"
+                f"**Campaign**: {most_voted_map['name']}\n"
                 f"**Survivors**: {', '.join(team1_names)}\n"
                 f"**Infected**: {', '.join(team2_names)}\n"
             )
             except Exception as e:
                 print(f"Failed to send queue info to user with ID {user_id}: {e}")
-
-    # Clear the reacted_users and participants_names variables
     queue_in_progress = False
     reacted_users = {'queue': set(), 'sub': set()}
     participants_names = []
+    await ctx.send("Queue finished. *Matchmaker, do not forget to log this queue!*")
 
-# Function to handle the queue process
 async def queue_process(ctx, queue_type):
     global reacted_users, participants_names
 
@@ -246,7 +298,6 @@ async def queue_process(ctx, queue_type):
             "Once 8 players have reacted, maps will be voted upon, and teams will be assigned.\n"
             "Note:  If 8 players have not joined in two hours, this queue will be remade.  **Do not queue unless you have at least two hours available.**\n\n"
             f"Please report any issues to {zeusMention}"
-
         ),
         'realism': (
             f"{carriers_role.mention} {ksobs_role.mention}\n" 
@@ -370,7 +421,7 @@ async def queue_process(ctx, queue_type):
         return (str(reaction.emoji) == "✅" or str(reaction.emoji) == "<:Substitute:1211015106029293612>") and user != bot.user
 
     try:
-        while len(reacted_users['queue']) < 8:
+        while len(reacted_users['queue']) < 2:
             reaction, user = await bot.wait_for('reaction_add', timeout=None, check=check)
 
             if str(reaction.emoji) == "✅":
@@ -416,4 +467,4 @@ async def mapdata(ctx):
     message += "```"
     await ctx.send(message)
 
-bot.run("MTE5ODQ1NDEzMjU1NDYwNDY3NA.G1IKNK.BCvewoHNRkcAp2E8NVGi3B4h_mxIC9Wd2Nachk")
+bot.run(BOT_TOKEN)

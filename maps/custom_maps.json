@@ -27,8 +27,8 @@
         },
         {
             "name": "Dark Carnival: Remix",
-            "timeout": 0,
-            "amountPlayed": 0
+            "timeout": 3,
+            "amountPlayed": 1
         },
         {
             "name": "Dead Vacation",

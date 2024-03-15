@@ -3,17 +3,17 @@
         {
             "name": "No Mercy",
             "timeout": 0,
-            "amountPlayed": 0
+            "amountPlayed": 1
         },
         {
             "name": "Crash Course",
-            "timeout": 3,
-            "amountPlayed": 1
+            "timeout": 0,
+            "amountPlayed": 2
         },
         {
             "name": "Death Toll",
-            "timeout": 2,
-            "amountPlayed": 1
+            "timeout": 0,
+            "amountPlayed": 2
         },
         {
             "name": "Dead Air",
@@ -22,13 +22,13 @@
         },
         {
             "name": "Blood Harvest",
-            "timeout": 1,
-            "amountPlayed": 1
+            "timeout": 2,
+            "amountPlayed": 3
         },
         {
             "name": "The Sacrifice",
             "timeout": 0,
-            "amountPlayed": 0
+            "amountPlayed": 1
         },
         {
             "name": "The Last Stand",
@@ -38,12 +38,12 @@
         {
             "name": "Dead Center",
             "timeout": 0,
-            "amountPlayed": 0
+            "amountPlayed": 1
         },
         {
             "name": "The Passing",
             "timeout": 0,
-            "amountPlayed": 0
+            "amountPlayed": 1
         },
         {
             "name": "Dark Carnival",
@@ -63,7 +63,7 @@
         {
             "name": "The Parish",
             "timeout": 0,
-            "amountPlayed": 0
+            "amountPlayed": 1
         },
         {
             "name": "Cold Stream",
