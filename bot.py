@@ -40,15 +40,15 @@ reacted_users = {
 
 participants_names = []
 
-with open('maps/campaign_maps.json', 'r') as file:
+with open('campaign_maps.json', 'r') as file:
     vanilla_maps_data = json.load(file)
 
-with open('maps/custom_maps.json', 'r') as file:
+with open('custom_maps.json', 'r') as file:
     custom_maps_data = json.load(file)
 
 async def decrement_timeout():
     # Load and update vanilla maps
-    with open('maps/campaign_maps.json', 'r') as file:
+    with open('campaign_maps.json', 'r') as file:
         vanilla_maps_data = json.load(file)
         for map_info in vanilla_maps_data['maps']:
             if map_info['timeout'] > 0:
@@ -57,11 +57,11 @@ async def decrement_timeout():
                     map_info['timeout'] = 0
 
     # Write updated vanilla maps data back to JSON file
-    with open('maps/campaign_maps.json', 'w') as file:
+    with open('campaign_maps.json', 'w') as file:
         json.dump(vanilla_maps_data, file, indent=4)
 
     # Load and update custom maps
-    with open('maps/custom_maps.json', 'r') as file:
+    with open('custom_maps.json', 'r') as file:
         custom_maps_data = json.load(file)
         for map_info in custom_maps_data['maps']:
             if map_info['timeout'] > 0:
@@ -70,7 +70,7 @@ async def decrement_timeout():
                     map_info['timeout'] = 0
 
     # Write updated custom maps data back to JSON file
-    with open('maps/custom_maps.json', 'w') as file:
+    with open('custom_maps.json', 'w') as file:
         json.dump(custom_maps_data, file, indent=4)
 
 @bot.event
@@ -91,7 +91,7 @@ async def queue(ctx, queue_type):
             queue_in_progress = True
             await queue_process(ctx, queue_type)
     else:
-        with open('img/coach.jpg', 'rb') as file:
+        with open('coach.jpg', 'rb') as file:
             image = discord.File(file)
         await ctx.send(file=image)
         await ctx.send("Shut the fuck up.")
@@ -100,12 +100,12 @@ async def queue(ctx, queue_type):
 async def voting(ctx, queue_type):
     global participants_names, reacted_users, queue_in_progress, team1_names, team2_names, canSub, most_voted_map
 
-    with open('maps/campaign_maps.json', 'r') as file:
+    with open('campaign_maps.json', 'r') as file:
         available_vanilla_maps = json.load(file)
         available_vanilla_maps_filtered = [map_info for map_info in available_vanilla_maps['maps'] if map_info['timeout'] == 0]
         selected_vanilla_maps = random.sample(available_vanilla_maps_filtered, min(3, len(available_vanilla_maps_filtered)))
 
-    with open('maps/custom_maps.json', 'r') as file:
+    with open('custom_maps.json', 'r') as file:
         available_custom_maps = json.load(file)
         available_custom_maps_filtered = [map_info for map_info in available_custom_maps['maps'] if map_info['timeout'] == 0]
         selected_customs = random.sample(available_custom_maps_filtered, min(3, len(available_custom_maps_filtered)))
