@@ -2,73 +2,63 @@
     "maps": [
         {
             "name": "No Mercy",
-            "timeout": 0,
-            "amountPlayed": 1
+            "timeout": 2,
+            "amountPlayed": 4
         },
         {
-            "name": "Crash Course",
+            "name": "Crash Course & The Last Stand",
             "timeout": 0,
-            "amountPlayed": 2
+            "amountPlayed": 3
         },
         {
             "name": "Death Toll",
             "timeout": 0,
-            "amountPlayed": 2
+            "amountPlayed": 4
         },
         {
             "name": "Dead Air",
             "timeout": 0,
-            "amountPlayed": 0
+            "amountPlayed": 2
         },
         {
             "name": "Blood Harvest",
-            "timeout": 2,
-            "amountPlayed": 3
+            "timeout": 0,
+            "amountPlayed": 5
         },
         {
-            "name": "The Sacrifice",
+            "name": "The Sacrifice & The Passing",
             "timeout": 0,
-            "amountPlayed": 1
-        },
-        {
-            "name": "The Last Stand",
-            "timeout": 0,
-            "amountPlayed": 0
+            "amountPlayed": 4
         },
         {
             "name": "Dead Center",
             "timeout": 0,
-            "amountPlayed": 1
-        },
-        {
-            "name": "The Passing",
-            "timeout": 0,
-            "amountPlayed": 1
+            "amountPlayed": 3
         },
         {
             "name": "Dark Carnival",
             "timeout": 0,
-            "amountPlayed": 1
+            "amountPlayed": 3
         },
         {
             "name": "Swamp Fever",
-            "timeout": 0,
-            "amountPlayed": 0
+            "timeout": 2,
+            "amountPlayed": 3
         },
         {
             "name": "Hard Rain",
             "timeout": 0,
-            "amountPlayed": 0
+            "amountPlayed": 2
         },
         {
             "name": "The Parish",
             "timeout": 0,
-            "amountPlayed": 1
+            "amountPlayed": 3
         },
         {
             "name": "Cold Stream",
             "timeout": 0,
-            "amountPlayed": 0
+            "amountPlayed": 2
         }
     ]
 }

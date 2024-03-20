@@ -1,0 +1,9 @@
+{
+    "players": [
+        {"name": "Player1", "wins": 10, "losses": 5, "games_played": 15},
+        {"name": "Player2", "wins": 8, "losses": 7, "games_played": 15},
+        {"name": "Player3", "wins": 12, "losses": 3, "games_played": 15},
+        {"name": "Player4", "wins": 6, "losses": 9, "games_played": 15},
+        {"name": "Player5", "wins": 4, "losses": 11, "games_played": 15}
+    ]
+}

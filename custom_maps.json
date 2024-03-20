@@ -27,13 +27,13 @@
         },
         {
             "name": "Dark Carnival: Remix",
-            "timeout": 3,
+            "timeout": 0,
             "amountPlayed": 1
         },
         {
             "name": "Dead Vacation",
-            "timeout": 0,
-            "amountPlayed": 0
+            "timeout": 2,
+            "amountPlayed": 1
         },
         {
             "name": "Deadbeat Escape",
@@ -42,8 +42,8 @@
         },
         {
             "name": "Diescraper Redux",
-            "timeout": 0,
-            "amountPlayed": 1
+            "timeout": 2,
+            "amountPlayed": 2
         },
         {
             "name": "Energy Crisis",
@@ -77,8 +77,8 @@
         },
         {
             "name": "No Mercy: Rehab",
-            "timeout": 0,
-            "amountPlayed": 0
+            "timeout": 2,
+            "amountPlayed": 1
         },
         {
             "name": "One 4 Nine",
@@ -97,8 +97,8 @@
         },
         {
             "name": "Day Break",
-            "timeout": 0,
-            "amountPlayed": 0
+            "timeout": 2,
+            "amountPlayed": 1
         },
         {
             "name": "Drop Dead Gorges",
@@ -112,8 +112,8 @@
         },
         {
             "name": "Plan B",
-            "timeout": 0,
-            "amountPlayed": 0
+            "timeout": 2,
+            "amountPlayed": 1
         },
         {
             "name": "Unforgivable Night",
@@ -122,8 +122,8 @@
         },
         {
             "name": "Cold Front",
-            "timeout": 0,
-            "amountPlayed": 0
+            "timeout": 2,
+            "amountPlayed": 1
         }
     ]
 }
