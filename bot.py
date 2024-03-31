@@ -5,6 +5,7 @@ import asyncio
 import os
 from datetime import datetime
 import json
+import sqlite3
 
 from dotenv import load_dotenv
 intents = discord.Intents.all()
@@ -19,17 +20,16 @@ zeuskriegID = "1148387726719189103"
 
 emoji_ids = {
     '1_Vanilla': 984524490191011860,
-    '2_Vanilla': 984524491768098856,
+    '2_Vanilla': 1211013201081405490,
     '3_Vanilla': 984524493932363867,
     '1_Custom': 984524488538460221,
-    '2_Custom': 984525317672669264,
+    '2_Custom': 1211013204382195753,
     '3_Custom': 984524493336752128,
     'Left_4_Dead': 984524530632491058,
 }
 
 bot = commands.Bot(command_prefix='!', intents=intents)
 queue_channel_id = None
-queue_message = None
 queued_players = []
 voting_in_progress = False
 
@@ -43,7 +43,9 @@ canSub = False
 team1_names = []
 team2_names = []
 
-
+teamsHaveBeenMade = False
+canUseVotingCommand = False
+queueIsFull = False
 
 with open('campaign_maps.json', 'r') as file:
     vanilla_maps_data = json.load(file)
@@ -85,7 +87,7 @@ async def on_ready():
 
 @bot.command()
 async def queue(ctx, queue_type):
-    global queue_channel_id, queue_message, queued_players, queue_msg, canUnreact
+    global queue_channel_id, queued_players, queue_msg, canUnreact
     if queue_channel_id is not None:
         await ctx.send("Queue is already active!")
         return
@@ -96,6 +98,8 @@ async def queue(ctx, queue_type):
     zeusMention = f'<@{zeuskriegID}>'
 
     queue_channel_id = ctx.channel.id
+
+    await ctx.message.delete()
 
     queue_messages = {
         'standard': (
@@ -230,8 +234,9 @@ async def queue(ctx, queue_type):
 
 @bot.event
 async def on_reaction_add(reaction, user):
-    global queue_message, queued_players, voting_in_progress, canUnreact
-    if voting_in_progress:
+    global queue_msg, queued_players, voting_in_progress, canUnreact, canUseVotingCommand, queueIsFull, queue_in_progress, teamsHaveBeenMade
+    
+    if queue_msg is None or queue_in_progress or voting_in_progress:
         return
 
     if str(reaction.emoji) == '✅' and user != bot.user and reaction.message.id == queue_msg.id:
@@ -241,13 +246,16 @@ async def on_reaction_add(reaction, user):
 
         if len(queued_players) >= 8:
             canUnreact = False
-            await voting(reaction.message.channel, "some_queue_type")
+            if not queue_in_progress:
+                await notify()
+                queue_in_progress = True
+                queueIsFull = True
 
 @bot.event
 async def on_reaction_remove(reaction, user):
-    global queue_message, queued_players, canUnreact
+    global queue_msg, queued_players, canUnreact
 
-    if not canUnreact:
+    if queue_msg is None or not canUnreact:
         return
 
     if str(reaction.emoji) == '✅' and reaction.message.id == queue_msg.id:
@@ -255,22 +263,36 @@ async def on_reaction_remove(reaction, user):
             queued_players.remove(user.id)
             print(queued_players)
 
-
-@bot.command()
-async def voting(ctx, queue_type):
-    global participants_names, queue_in_progress, team1_names, team2_names, canSub, most_voted_map, voting_in_progress, queued_players
-
-    voting_in_progress = True
-
+async def notify():
+    global queued_players, canUseVotingCommand
     for player_id in queued_players[:8]:
         player = await bot.fetch_user(player_id)
         if player:
             queue_channel = bot.get_channel(1072065028049600512)
             if queue_channel:
                 queue_channel_link = queue_channel.mention
-                await player.send(f"The queue has reached 8 players! Please vote for the map you'd like to play in {queue_channel_link}.")
+                await player.send(f"The queue has reached 8 players! Please join Pre-Game VC and be ready to vote! {queue_channel_link}.")
             else:
-                await player.send("The queue has reached 8 players! Please vote for the map you'd like to play.")
+                await player.send("The queue has reached 8 players! Please join Pre-Game VC and be ready to vote!")
+    
+    canUseVotingCommand = True  # Allow voting command to be used after the queue has popped
+
+
+@bot.command()
+async def voting(ctx):
+    global queue_in_progress, team1_names, team2_names, canSub, most_voted_map, voting_in_progress, queued_players, teamsHaveBeenMade, canUseVotingCommand
+
+    if not queue_in_progress:
+        await ctx.send("Voting is not available at the moment.")
+        print("YEE")
+        return
+    
+    if not canUseVotingCommand:
+        await ctx.send("Voting is not available at the moment.")
+        return
+
+    canUseVotingCommand = False
+    voting_in_progress = True
 
     with open('campaign_maps.json', 'r') as file:
         available_vanilla_maps = json.load(file)
@@ -283,8 +305,7 @@ async def voting(ctx, queue_type):
         selected_customs = random.sample(available_custom_maps_filtered, min(3, len(available_custom_maps_filtered)))
 
     vote_message = (
-        f"Vote for the campaign you'd like to play! The campaign with the most votes wins. Tied campaigns will be chosen at random.\n"
-        f"**You have 5 minutes to join Pre-Game VC while maps are being voted for!**\n\n"
+        f"Vote for the campaign you'd like to play! The campaign with the most votes wins. Tied campaigns will be chosen at random.\n\n"
         f"`=== Vanilla Campaigns ===`\n"
     )
 
@@ -316,19 +337,18 @@ async def voting(ctx, queue_type):
 
     while True:
         try:
-            reaction, user = await bot.wait_for('reaction_add', timeout=300, check=check_reaction)
+            reaction, user = await bot.wait_for('reaction_add', timeout=25, check=check_reaction)
         except asyncio.TimeoutError:
             break  # Timeout, end the voting
 
         if reaction is None or user is None:
             break
 
-
     # Determine the most voted map
     index = reactions.index(str(reaction.emoji)) if reaction is not None else None
     if index == 6:
-        await ctx.send("Rerolling maps...")
-        await revote(ctx, queue_type)  # Restart the voting process
+        discriminators = [map_info['name'] for map_info in selected_vanilla_maps + selected_customs]
+        await revote(ctx, *discriminators)  # Pass the discriminators as arguments
         return
     if index is not None and index < 3:
         most_voted_map = selected_vanilla_maps[index]
@@ -359,7 +379,6 @@ async def voting(ctx, queue_type):
 
         if abs(len(team1_names) - len(team2_names)) <= 1:
             balanced_teams = True
-
     # Construct team mentions
     team1_mentions = '\n'.join([f'<@{name}>' for name in team1_names])
     team2_mentions = '\n'.join([f'<@{name}>' for name in team2_names])
@@ -378,26 +397,53 @@ async def voting(ctx, queue_type):
 
     voting_in_progress = False
     canSub = True
+    teamsHaveBeenMade = True
+
+
+def get_player_stats(player_name):
+    conn = sqlite3.connect('player.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT wins, losses, games_played FROM player WHERE player_name = ?', (player_name,))
+    result = cursor.fetchone()
+    conn.close()
+    
+    if result:
+        stats = {
+            'wins': result[0],
+            'losses': result[1],
+            'games_played': result[2]
+        }
+        return stats
+    else:
+        # If player not found, return default stats
+        return {
+            'wins': 0,
+            'losses': 0,
+            'games_played': 0
+        }
 
 @bot.command()
-async def revote(ctx, queue_type):
-    global participants_names, queue_in_progress, team1_names, team2_names, canSub, most_voted_map, voting_in_progress, queued_players
+async def revote(ctx, *discriminators):
+    global queue_in_progress, team1_names, team2_names, canSub, most_voted_map, voting_in_progress, queued_players
 
     voting_in_progress = True
 
     with open('campaign_maps.json', 'r') as file:
         available_vanilla_maps = json.load(file)
         available_vanilla_maps_filtered = [map_info for map_info in available_vanilla_maps['maps'] if map_info['timeout'] == 0]
-        selected_vanilla_maps = random.sample(available_vanilla_maps_filtered, min(3, len(available_vanilla_maps_filtered)))
+        # Exclude previously chosen maps
+        selected_vanilla_maps = [map_info for map_info in available_vanilla_maps_filtered if map_info['name'] not in discriminators]
+        selected_vanilla_maps = random.sample(selected_vanilla_maps, min(3, len(selected_vanilla_maps)))
 
     with open('custom_maps.json', 'r') as file:
         available_custom_maps = json.load(file)
         available_custom_maps_filtered = [map_info for map_info in available_custom_maps['maps'] if map_info['timeout'] == 0]
-        selected_customs = random.sample(available_custom_maps_filtered, min(3, len(available_custom_maps_filtered)))
+        # Exclude previously chosen maps
+        selected_customs = [map_info for map_info in available_custom_maps_filtered if map_info['name'] not in discriminators]
+        selected_customs = random.sample(selected_customs, min(3, len(selected_customs)))
 
     vote_message = (
-        f"Vote for the campaign you'd like to play! The campaign with the most votes wins. Tied campaigns will be chosen at random.\n"
-        f"**You have 5 minutes to join Pre-Game VC while maps are being voted for!**\n\n"
+        f"The maps have been re-rolled. You have a short period of time to vote for a different map.\n\n"
         f"`=== Vanilla Campaigns ===`\n"
     )
 
@@ -409,6 +455,8 @@ async def revote(ctx, queue_type):
     vote_message += "`=== Custom Campaigns ===`\n"
     for i, map_name in enumerate(selected_customs, start=1):
         vote_message += f"<:{i}_Custom:{emoji_ids[str(i)+'_Custom']}> —  {map_name['name']}\n"
+    
+    vote_message += f"\n"
 
     vote_message += (
         f"Missing our custom campaigns? Download them here: <https://steamcommunity.com/sharedfiles/filedetails/?id=3023799326>"
@@ -435,7 +483,6 @@ async def revote(ctx, queue_type):
         if reaction is None or user is None:
             break
 
-
     # Determine the most voted map
     index = reactions.index(str(reaction.emoji)) if reaction is not None else None
     if index is not None and index < 3:
@@ -485,10 +532,11 @@ async def revote(ctx, queue_type):
     )
 
     voting_in_progress = False
+    teamsHaveBeenMade = True
     canSub = True
 
 @bot.command()
-async def command(ctx):
+async def jockey(ctx):
     embed = discord.Embed(title="Left 4 Dead 2 Queue Bot Help", color=0x00ff00)
     embed.add_field(name="Queue Types:", value=
 """
@@ -509,9 +557,10 @@ async def command(ctx):
 """
 - !queue [queue_type]: Start a new queue.
 - !sub [player_to_remove] [player_to_add]: Substitute a player in the queue.
-- !end [queue_type]: End the current queue and assign teams.
+- !end [queue_type] [winning team]: End the current queue.
 - !mapdata: Display map data.
-- !help: Show this help message.
+- !jockey: Show this help message.
+- !balance: [Player1] [Player2] switch players on opposite teams
 """, inline=False)
 
     await ctx.send(embed=embed)
@@ -558,9 +607,51 @@ async def sub(ctx, player_to_remove: discord.Member, player_to_add: discord.Memb
         f"`Infected`\n{team2_mentions}\n\n"
     )
 
+def create_tables():
+    conn = sqlite3.connect('player.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS player (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            player_name TEXT NOT NULL,
+            wins INTEGER NOT NULL DEFAULT 0,
+            losses INTEGER NOT NULL DEFAULT 0,
+            games_played INTEGER NOT NULL DEFAULT 0
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+def add_or_update_player(player_name, win=False):
+    with sqlite3.connect('player.db') as conn:
+        cursor = conn.cursor()
+
+        # Check if the player exists in the player table
+        cursor.execute('SELECT * FROM player WHERE player_name = ?', (player_name,))
+        existing_player = cursor.fetchone()
+
+        if existing_player:
+            # Player exists, update wins, losses, and games played
+            if win:
+                cursor.execute('UPDATE player SET wins = wins + 1, games_played = games_played + 1 WHERE player_name = ?', (player_name,))
+            else:
+                cursor.execute('UPDATE player SET losses = losses + 1, games_played = games_played + 1 WHERE player_name = ?', (player_name,))
+        else:
+            # Player does not exist, add them to player table
+            cursor.execute('INSERT INTO player (player_name, wins, losses, games_played) VALUES (?, ?, ?, ?)', (player_name, int(win), int(not win), 1))
+
+        conn.commit()
+
+def get_top_players(n):
+    with sqlite3.connect('player.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT player_name, wins, losses, games_played, (wins * 1.0 / (losses + 1)) AS score FROM player ORDER BY score DESC LIMIT ?', (n,))
+        top_players = cursor.fetchall()
+        return top_players
+
 @bot.command()
-async def end(ctx, queue_type):
-    global queue_channel_id, queue_message, queued_players, canSub, canUnreact, most_voted_map, team1_names, team2_names
+async def end(ctx, queue_type, winning_team):
+    global queue_channel_id, queue_msg, queued_players, canSub, canUnreact, most_voted_map, team1_names, team2_names, teamsHaveBeenMade, queueIsFull, queue_in_progress
     if queue_channel_id is None:
         await ctx.send("Queue is not active!")
         return
@@ -587,51 +678,142 @@ async def end(ctx, queue_type):
         if member:
             team2_usernames.append(member.display_name)
 
-    # Fetch all queued players and send them DMs
-    for user_id in queued_players:
-        user = await bot.fetch_user(user_id)  # No need to convert to string for user ID
-        if user:
-            try:
-                await user.send(
-                    f"**__Queue Information__**\n\n"
-                    f"**Date Popped**: {current_time}\n"
-                    f"**Queue Type**: {queue_type.capitalize()}\n"
-                    f"**Campaign**: {most_voted_map['name']}\n"
-                    f"**Survivors**: {', '.join(team1_usernames)}\n"
-                    f"**Infected**: {', '.join(team2_usernames)}\n"
-                )
-            except Exception as e:
-                print(f"Failed to send queue info to user with ID {user_id}: {e}")
+    
+    importantPeople = ["317412117240348675", "1148387726719189103"]
+
+    if(winning_team != "none"):
+        for user_id in importantPeople:
+            user = await bot.fetch_user(user_id)  # No need to convert to string for user ID
+            if user:
+                try:
+                    await user.send(
+                        f"**__Queue Information__**\n\n"
+                        f"**Date Popped**: {current_time}\n"
+                        f"**Queue Type**: {queue_type.capitalize()}\n"
+                        f"**Campaign**: {most_voted_map['name']}\n"
+                        f"**Survivors**: {', '.join(team1_usernames)}\n"
+                        f"**Infected**: {', '.join(team2_usernames)}\n"
+                    )
+                except Exception as e:
+                    print(f"Failed to send queue info to user with ID {user_id}: {e}")
+    
+    
+
+    # Update players' stats
+    if winning_team.lower() == "infected":
+        for player_name in team2_usernames:
+            add_or_update_player(player_name, win=True)
+
+        for player_name in team1_usernames:
+            add_or_update_player(player_name, win=False)
+    elif winning_team.lower() == "survivors":
+        for player_name in team1_usernames:
+            add_or_update_player(player_name, win=True)
+
+        for player_name in team2_usernames:
+            add_or_update_player(player_name, win=False)
+    elif winning_team.lower() == "none":
+        pass  # Do nothing, just end the queue without updating stats
+    else:
+        await ctx.send("Invalid winning team. Please choose 'survivors' or 'infected'.")
 
     # Reset all queue-related variables
-                
     await decrement_timeout()
     canSub = False
-    queue_message = None
+    queue_msg = None
     queued_players = []
     queue_channel_id = None
     canUnreact = True
+    teamsHaveBeenMade = False
+    queue_in_progress = False
     await ctx.send("Queue has been ended.")
+
+@bot.command()
+async def balance(ctx, player1: discord.Member, player2: discord.Member):
+    global queue_in_progress
+
+    if not queue_in_progress:
+        return
+    
+    if player1.id not in queued_players or player2.id not in queued_players:
+        await ctx.send("Both players must be in the queue to switch teams.")
+        return
+
+    # Check if the players are on opposite teams
+    team1_players = queued_players[:len(queued_players)//2]
+    team2_players = queued_players[len(queued_players)//2:]
+    
+    if (player1.id in team1_players and player2.id in team1_players) or \
+       (player1.id in team2_players and player2.id in team2_players):
+        await ctx.send("Players must be on opposite teams to switch.")
+        return
+
+    # Switch the players in the queued_players list
+    index_player1 = queued_players.index(player1.id)
+    index_player2 = queued_players.index(player2.id)
+    queued_players[index_player1], queued_players[index_player2] = queued_players[index_player2], queued_players[index_player1]
+
+    # Construct team mentions
+    team1_mentions = '\n'.join([f'<@{name}>' for name in queued_players[:len(queued_players)//2]])
+    team2_mentions = '\n'.join([f'<@{name}>' for name in queued_players[len(queued_players)//2:]])
+
+    # Send a message to confirm the team switch
+    await ctx.send(
+        "`Survivors`\n" + team1_mentions + "\n\n"
+        "`Infected`\n" + team2_mentions
+    )
+
 
 @bot.command()
 async def mapdata(ctx):
     message = "```"
+
+    message += "Possible Vanilla Map Pool: \n"
     
     with open('campaign_maps.json', 'r') as file:
         vanilla_maps_data = json.load(file)
-        message += "Vanilla Maps:\n"
         for map_info in vanilla_maps_data['maps']:
             if(map_info['timeout'] == 0):
                 message += f"Map: {map_info['name']}, Timeout: {map_info['timeout']}, Play Count: {map_info['amountPlayed']}\n"
 
+    message += "Possible Custom Map Pool: \n"
+
     with open('custom_maps.json', 'r') as file:
         custom_maps_data = json.load(file)
-        message += "Custom Maps:\n"
         for map_info in custom_maps_data['maps']:
             if(map_info['timeout'] == 0):
                 message += f"Map: {map_info['name']}, Timeout: {map_info['timeout']}\n"
     
     message += "```"
     await ctx.send(message)
+
+@bot.command()
+async def fuckserverrules(ctx):
+    global queued_players, teamsHaveBeenMade
+
+    if not (teamsHaveBeenMade):
+        return 
+    
+    balanced_teams = False
+    while not balanced_teams:
+        random.shuffle(queued_players)
+        team_size = len(queued_players) // 2
+        team1_names = queued_players[:team_size]
+        team2_names = queued_players[team_size:]
+
+        if abs(len(team1_names) - len(team2_names)) <= 1:
+            balanced_teams = True
+
+    # Construct team mentions
+    team1_mentions = '\n'.join([f'<@{name}>' for name in team1_names])
+    team2_mentions = '\n'.join([f'<@{name}>' for name in team2_names])
+
+    # Send the message with the assigned teams
+    await ctx.send(
+        "**FUCK SERVER RULES!**"
+        "Teams have been reassigned!\n\n"
+        "`Team 1`\n" + team1_mentions + "\n\n"
+        "`Team 2`\n" + team2_mentions
+    )
 
 bot.run(BOT_TOKEN)
