@@ -5,7 +5,7 @@ import asyncio
 import os
 from datetime import datetime
 import json
-import sqlite3
+from database import create_tables, add_or_update_player, get_top_players, get_player_stats
 
 from dotenv import load_dotenv
 intents = discord.Intents.all()
@@ -320,28 +320,6 @@ async def voting(ctx):
     teamsHaveBeenMade = True
 
 
-def get_player_stats(player_name):
-    conn = sqlite3.connect('player.db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT wins, losses, games_played FROM player WHERE player_name = ?', (player_name,))
-    result = cursor.fetchone()
-    conn.close()
-    
-    if result:
-        stats = {
-            'wins': result[0],
-            'losses': result[1],
-            'games_played': result[2]
-        }
-        return stats
-    else:
-        # If player not found, return default stats
-        return {
-            'wins': 0,
-            'losses': 0,
-            'games_played': 0
-        }
-
 @bot.command()
 async def revote(ctx, *discriminators):
     global queue_in_progress, team1_names, team2_names, canSub, most_voted_map, voting_in_progress, queued_players
@@ -527,47 +505,6 @@ async def sub(ctx, player_to_remove: discord.Member, player_to_add: discord.Memb
         f"`Infected`\n{team2_mentions}\n\n"
     )
 
-def create_tables():
-    conn = sqlite3.connect('player.db')
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS player (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            player_name TEXT NOT NULL,
-            wins INTEGER NOT NULL DEFAULT 0,
-            losses INTEGER NOT NULL DEFAULT 0,
-            games_played INTEGER NOT NULL DEFAULT 0
-        )
-    ''')
-    conn.commit()
-    conn.close()
-
-def add_or_update_player(player_name, win=False):
-    with sqlite3.connect('player.db') as conn:
-        cursor = conn.cursor()
-
-        # Check if the player exists in the player table
-        cursor.execute('SELECT * FROM player WHERE player_name = ?', (player_name,))
-        existing_player = cursor.fetchone()
-
-        if existing_player:
-            # Player exists, update wins, losses, and games played
-            if win:
-                cursor.execute('UPDATE player SET wins = wins + 1, games_played = games_played + 1 WHERE player_name = ?', (player_name,))
-            else:
-                cursor.execute('UPDATE player SET losses = losses + 1, games_played = games_played + 1 WHERE player_name = ?', (player_name,))
-        else:
-            # Player does not exist, add them to player table
-            cursor.execute('INSERT INTO player (player_name, wins, losses, games_played) VALUES (?, ?, ?, ?)', (player_name, int(win), int(not win), 1))
-
-        conn.commit()
-
-def get_top_players(n):
-    with sqlite3.connect('player.db') as conn:
-        cursor = conn.cursor()
-        cursor.execute('SELECT player_name, wins, losses, games_played, (wins * 1.0 / (losses + 1)) AS score FROM player ORDER BY score DESC LIMIT ?', (n,))
-        top_players = cursor.fetchall()
-        return top_players
 
 @bot.command()
 async def end(ctx, queue_type, winning_team):
