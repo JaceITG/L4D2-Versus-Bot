@@ -5,7 +5,7 @@ import asyncio
 import os
 from datetime import datetime
 import json
-import sqlite3
+from database import create_tables, add_or_update_player, get_top_players, get_player_stats
 
 from dotenv import load_dotenv
 intents = discord.Intents.all()
@@ -27,6 +27,7 @@ emoji_ids = {
     '3_Custom': 984524493336752128,
     'Left_4_Dead': 984524530632491058,
 }
+
 
 bot = commands.Bot(command_prefix='!', intents=intents)
 queue_channel_id = None
@@ -101,131 +102,50 @@ async def queue(ctx, queue_type):
 
     await ctx.message.delete()
 
-    queue_messages = {
-        'standard': (
-            f"{carriers_role.mention} {ksobs_role.mention}\n" 
-            "A **__standard Vanilla+__** versus game is being set up for 8 players!\n"
-            "(Minor QoL and balance plugins; see ⁠dedicated-server-info for more information!)\n\n"
-            "To join the queue, react to this message with ✅\n"
-            "To join as a sub, react to this message with <:Substitute:984524545866219631>\n\n"
-            "Once 8 players have reacted, maps will be voted upon, and teams will be assigned.\n"
-            "Note:  If 8 players have not joined in two hours, this queue will be remade.  **Do not queue unless you have at least two hours available.**\n\n"
-            f"Please report any issues to {zeusMention}"
-        ),
-        'realism': (
-            f"{carriers_role.mention} {ksobs_role.mention}\n" 
-            "A **__Realism__** is being set up for 8 players!\n"
-            "(Survivors can't see player or item outlines; common infected are more resilient; Witches kill instantly!)\n\n"
-            "To join the queue, react to this message with ✅\n"
-            "To join as a sub, react to this message with <:Substitute:984524545866219631>\n\n"
-            "Once 8 players have reacted, maps will be voted upon, and teams will be assigned.\n"
-            "Note:  If 8 players have not joined in two hours, this queue will be remade.  **Do not queue unless you have at least two hours available.**\n\n"
-            f"Please report any issues to {zeusMention}"
-        ),
-        'survival':(
-            f"{carriers_role.mention} {ksobs_role.mention}\n" 
-            "A **__Survival__** versus game is being set up for 8 players!\n"
-            "(Survivors hold out in a small arena; teams swap; the Survivor team with the longest time alive wins!)\n\n"
-            "To join the queue, react to this message with ✅\n"
-            "To join as a sub, react to this message with <:Substitute:984524545866219631>\n\n"
-            "Once 8 players have reacted, maps will be voted upon, and teams will be assigned.\n"
-            "Note:  If 8 players have not joined in two hours, this queue will be remade.  **Do not queue unless you have at least two hours available.**\n\n"
-            f"Please report any issues to {zeusMention}"
-        ),
-        'jockey':(
-            f"{carriers_role.mention} {ksobs_role.mention}\n" 
-            "A **__Riding My Survivor__** versus game is being set up for 8 players!\n"
-            "(Jockeys are the only Special Infected; Jockey HP, DMG, and speed are significantly increased!)\n\n"
-            "To join the queue, react to this message with ✅\n"
-            "To join as a sub, react to this message with <:Substitute:984524545866219631>\n\n"
-            "Once 8 players have reacted, maps will be voted upon, and teams will be assigned.\n"
-            "Note:  If 8 players have not joined in two hours, this queue will be remade.  **Do not queue unless you have at least two hours available.**\n\n"
-            f"Please report any issues to {zeusMention}"
-        ),
-        'scavenge':(
-            f"{carriers_role.mention} {ksobs_role.mention}\n" 
-            "A **__Scavenge__** versus game is being set up for 8 players!\n"
-            "(Survivors collect gas cans in a small arena; teams swap; the Survivor team with the most gas cans wins!)\n\n"
-            "To join the queue, react to this message with ✅\n"
-            "To join as a sub, react to this message with <:Substitute:984524545866219631>\n\n"
-            "Once 8 players have reacted, maps will be voted upon, and teams will be assigned.\n"
-            "Note:  If 8 players have not joined in two hours, this queue will be remade.  **Do not queue unless you have at least two hours available.**\n\n"
-            f"Please report any issues to {zeusMention}"
-        ),
-        'bleed':(
-            f"{carriers_role.mention} {ksobs_role.mention}\n" 
-            "A **__Bleed Out__** versus game is being set up for 8 players!\n"
-            "(Survivors only have temporary HP; First Aid Kits are replaced with Adrenaline and Pain Pills!)\n\n"
-            "To join the queue, react to this message with ✅\n"
-            "To join as a sub, react to this message with <:Substitute:984524545866219631>\n\n"
-            "Once 8 players have reacted, maps will be voted upon, and teams will be assigned.\n"
-            "Note:  If 8 players have not joined in two hours, this queue will be remade.  **Do not queue unless you have at least two hours available.**\n\n"
-            f"Please report any issues to {zeusMention}"
-        ),
-        'tank':(
-            f"{carriers_role.mention} {ksobs_role.mention}\n" 
-            "A **__Taaannnkk!__** versus game is being set up for 8 players!\n"
-            "(Only Tanks spawn; First Aid Kits are replaced with Adrenaline and Pain Pills!)\n\n"
-            "To join the queue, react to this message with ✅\n"
-            "To join as a sub, react to this message with <:Substitute:984524545866219631>\n\n"
-            "Once 8 players have reacted, maps will be voted upon, and teams will be assigned.\n"
-            "Note:  If 8 players have not joined in two hours, this queue will be remade.  **Do not queue unless you have at least two hours available.**\n\n"
-            f"Please report any issues to {zeusMention}"
-        ),
-        'hpack':(
-            f"{carriers_role.mention} {ksobs_role.mention}\n" 
-            "A **__Healthpackalypse!__** versus game is being set up for 8 players!\n"
-            "(All health items are removed from spawn pools!)\n\n"
-            "To join the queue, react to this message with ✅\n"
-            "To join as a sub, react to this message with <:Substitute:984524545866219631>\n\n"
-            "Once 8 players have reacted, maps will be voted upon, and teams will be assigned.\n"
-            "Note:  If 8 players have not joined in two hours, this queue will be remade.  **Do not queue unless you have at least two hours available.**\n\n"
-            f"Please report any issues to {zeusMention}"
-        ),
-        'confogl':(
-            f"{carriers_role.mention} {ksobs_role.mention}\n" 
-            "A **__Confogl__** versus game is being set up for 8 players!\n"
-            "(First Aid Kits are removed; more Adrenaline and Pain Pills spawn; only Tier-1 weapons!)\n\n"
-            "To join the queue, react to this message with ✅\n"
-            "To join as a sub, react to this message with <:Substitute:984524545866219631>\n\n"
-            "Once 8 players have reacted, maps will be voted upon, and teams will be assigned.\n"
-            "Note:  If 8 players have not joined in two hours, this queue will be remade.  **Do not queue unless you have at least two hours available.**\n\n"
-            f"Please report any issues to {zeusMention}"
-        ),
-        'l4d1':(
-            f"{carriers_role.mention} {ksobs_role.mention}\n" 
-            "A **Left 4 Dead 1** versus game is being set up for 8 players!\n"
-            "**__This queue is for Left 4 Dead 1, NOT L4D2!__"
-            "No Charger, Jockey, or Spitter, but Boomers can vomit instantly after spawning/while being shoved, Hunters deal damage faster, and Smokers are\n"
-            "hitscan.  Tanks throw rocks quicker and move faster when on fire.  Witches kill downed Survivors faster.\n\n"
+    # Generate a queue message for the chosen game mode
+    def queue_message(gamemode):
+        gamemode_strs = {
+            "standard": {"title": "Standard Vanilla+", "desc": "Minor QoL and balance plugins; see ⁠dedicated-server-info for more information!"},
+            "realism" : {"title": "Realism", "desc": "Survivors can't see player or item outlines; common infected are more resilient; Witches kill instantly!"},
+            "survival": {"title": "Survival", "desc": "Survivors hold out in a small arena; teams swap; the Survivor team with the longest time alive wins!"},
+            "jockey"  : {"title": "Riding My Survivor", "desc": "Jockeys are the only Special Infected; Jockey HP, DMG, and speed are significantly increased!"},
+            "scavenge": {"title": "Scavenge", "desc": "Survivors collect gas cans in a small arena; teams swap; the Survivor team with the most gas cans wins!"},
+            "bleed"   : {"title": "Bleed Out", "desc": "Survivors only have temporary HP; First Aid Kits are replaced with Adrenaline and Pain Pills!"},
+            "tank"    : {"title": "Taaannnkk!", "desc": "Only Tanks spawn; First Aid Kits are replaced with Adrenaline and Pain Pills!"},
+            "hpack"   : {"title": "Healthpackalypse!", "desc": "All health items are removed from spawn pools!"},
+            "confogl" : {"title": "Confogl", "desc": "First Aid Kits are removed; more Adrenaline and Pain Pills spawn; only Tier-1 weapons!"},
+            "l4d1"    : {"title": "Left 4 Dead 1", "desc": "This queue is for Left 4 Dead 1, NOT L4D2!"},
+            "l4d2"    : {"title": "unmodded L4D2", "desc": "No plugins or alterations of any kind; this is pure vanilla Left 4 Dead 2!"},
+        }
 
-            "Small firearm arsenal, superior pistols, no melee weapons, generally faster-paced than L4D2 Versus with less camping/baiting. The score is\n" 
-            "determined by Survivor HP at the end of a level and a per-map difficulty modifier.\n\n"
-            "To join the queue, react to this message with ✅\n"
-            "To join as a sub, react to this message with <:Substitute:984524545866219631>\n\n"
-            "Once 8 players have reacted, maps will be voted upon, and teams will be assigned.\n"
-            "Note:  If 8 players have not joined in two hours, this queue will be remade.  **Do not queue unless you own Left 4 Dead 1 and have at least two hours\n" 
-            "available.**\n\n"
-            f"Please report any issues to {zeusMention}"
-        ),
-        'l4d2':(
+        if gamemode not in gamemode_strs.keys():
+            raise ValueError
+
+        # Fill in template with attributes for selected game type
+        return (
             f"{carriers_role.mention} {ksobs_role.mention}\n" 
-            "An **unmodded L4D2** versus game is being set up for 8 players!\n"
-            "(No plugins or alterations of any kind; this is pure vanilla Left 4 Dead 2!)\n\n"
+            f"A **__{gamemode_strs[gamemode]['title']}__** versus game is being set up for 8 players!\n"
+            
+            f"{("No Charger, Jockey, or Spitter, but Boomers can vomit instantly after spawning/while being shoved, Hunters deal damage faster, and Smokers are\n"
+                "hitscan.  Tanks throw rocks quicker and move faster when on fire.  Witches kill downed Survivors faster.\n\n"
+                "Small firearm arsenal, superior pistols, no melee weapons, generally faster-paced than L4D2 Versus with less camping/baiting. The score is\n" 
+                "determined by Survivor HP at the end of a level and a per-map difficulty modifier.\n\n") if gamemode == "l4d1" else ""}"
+
+            f"({gamemode_strs[gamemode]['desc']})\n\n"
             "To join the queue, react to this message with ✅\n"
             "To join as a sub, react to this message with <:Substitute:984524545866219631>\n\n"
             "Once 8 players have reacted, maps will be voted upon, and teams will be assigned.\n"
-            "Note:  If 8 players have not joined in two hours, this queue will be remade.  **Do not queue unless you have at least two hours available.**\n\n"
+            f"Note:  If 8 players have not joined in two hours, this queue will be remade.  **Do not queue unless you {"own Left 4 Dead 1 and" if gamemode=="l4d1" else ""} have at least two hours available.**\n\n" 
             f"Please report any issues to {zeusMention}"
         )
-    }
 
-    if queue_type not in queue_messages:
-        await ctx.send("Invalid queue type. Available types: standard, custom")
-        return
 
     # Send the appropriate queue information message
-    queue_msg = await ctx.send(queue_messages[queue_type], delete_after=None)
+    try:
+        queue_msg = await ctx.send(queue_message(queue_type), delete_after=None)
+    except ValueError:
+        await ctx.send("Invalid queue type. Available types: standard, custom")
+        return
 
     await queue_msg.add_reaction("✅")
     await queue_msg.add_reaction("<:Substitute:984524545866219631>")
@@ -399,28 +319,6 @@ async def voting(ctx):
     canSub = True
     teamsHaveBeenMade = True
 
-
-def get_player_stats(player_name):
-    conn = sqlite3.connect('player.db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT wins, losses, games_played FROM player WHERE player_name = ?', (player_name,))
-    result = cursor.fetchone()
-    conn.close()
-    
-    if result:
-        stats = {
-            'wins': result[0],
-            'losses': result[1],
-            'games_played': result[2]
-        }
-        return stats
-    else:
-        # If player not found, return default stats
-        return {
-            'wins': 0,
-            'losses': 0,
-            'games_played': 0
-        }
 
 @bot.command()
 async def revote(ctx, *discriminators):
@@ -607,47 +505,6 @@ async def sub(ctx, player_to_remove: discord.Member, player_to_add: discord.Memb
         f"`Infected`\n{team2_mentions}\n\n"
     )
 
-def create_tables():
-    conn = sqlite3.connect('player.db')
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS player (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            player_name TEXT NOT NULL,
-            wins INTEGER NOT NULL DEFAULT 0,
-            losses INTEGER NOT NULL DEFAULT 0,
-            games_played INTEGER NOT NULL DEFAULT 0
-        )
-    ''')
-    conn.commit()
-    conn.close()
-
-def add_or_update_player(player_name, win=False):
-    with sqlite3.connect('player.db') as conn:
-        cursor = conn.cursor()
-
-        # Check if the player exists in the player table
-        cursor.execute('SELECT * FROM player WHERE player_name = ?', (player_name,))
-        existing_player = cursor.fetchone()
-
-        if existing_player:
-            # Player exists, update wins, losses, and games played
-            if win:
-                cursor.execute('UPDATE player SET wins = wins + 1, games_played = games_played + 1 WHERE player_name = ?', (player_name,))
-            else:
-                cursor.execute('UPDATE player SET losses = losses + 1, games_played = games_played + 1 WHERE player_name = ?', (player_name,))
-        else:
-            # Player does not exist, add them to player table
-            cursor.execute('INSERT INTO player (player_name, wins, losses, games_played) VALUES (?, ?, ?, ?)', (player_name, int(win), int(not win), 1))
-
-        conn.commit()
-
-def get_top_players(n):
-    with sqlite3.connect('player.db') as conn:
-        cursor = conn.cursor()
-        cursor.execute('SELECT player_name, wins, losses, games_played, (wins * 1.0 / (losses + 1)) AS score FROM player ORDER BY score DESC LIMIT ?', (n,))
-        top_players = cursor.fetchall()
-        return top_players
 
 @bot.command()
 async def end(ctx, queue_type, winning_team):
