@@ -558,17 +558,17 @@ async def end(ctx, queue_type, winning_team):
 
     # Update players' stats
     if winning_team.lower() == "infected":
-        for player_name in team2_usernames:
-            add_or_update_player(player_name, win=True)
+        for player_id in team2_names:
+            add_or_update_player(player_id, win=True)
 
-        for player_name in team1_usernames:
-            add_or_update_player(player_name, win=False)
+        for player_id in team1_names:
+            add_or_update_player(player_id, win=False)
     elif winning_team.lower() == "survivors":
-        for player_name in team1_usernames:
-            add_or_update_player(player_name, win=True)
+        for player_id in team1_names:
+            add_or_update_player(player_id, win=True)
 
-        for player_name in team2_usernames:
-            add_or_update_player(player_name, win=False)
+        for player_id in team2_names:
+            add_or_update_player(player_id, win=False)
     elif winning_team.lower() == "none":
         pass  # Do nothing, just end the queue without updating stats
     else:
