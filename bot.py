@@ -5,7 +5,10 @@ import asyncio
 import os
 from datetime import datetime
 import json
+
 from database import create_tables, add_or_update_player, get_top_players, get_player_stats
+from queue import GameQueue
+from utils import gen_q_id
 
 from dotenv import load_dotenv
 intents = discord.Intents.all()
@@ -88,6 +91,15 @@ async def on_ready():
 
 @bot.command()
 async def queue(ctx, queue_type):
+    try:
+        new_queue = GameQueue(q_id=gen_q_id(), q_ctx=ctx, game_type=queue_type)
+    except ValueError: 
+        await ctx.send("Invalid queue type. View help message with !jockey for available game types.")
+        return
+
+    return
+    ### OLD IMPLEMENTATION ###
+
     global queue_channel_id, queued_players, queue_msg, canUnreact
     if queue_channel_id is not None:
         await ctx.send("Queue is already active!")

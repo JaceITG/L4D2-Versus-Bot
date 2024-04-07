@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 
 from database import add_or_update_player
+from utils import queue_message
 
 ### Queue ###
 #
@@ -12,11 +13,16 @@ from database import add_or_update_player
 # 3 -> game in progress
 # 4 -> game ended, results logged
 
-class Queue:
+class GameQueue:
 
     def __init__(self, q_id: int, q_channel: discord.TextChannel, game_type: str):
         self.q_id = q_id
         self.game_type = game_type
+
+        try:
+            self.q_message = queue_message(self.game_type)
+        except ValueError:
+            raise
 
         self.announcement_msg = ""
         self.status = 0
